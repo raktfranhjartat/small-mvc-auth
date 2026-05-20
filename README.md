@@ -1,96 +1,85 @@
-# Small MVC Auth 🔒
+# Small MVC Auth
 
 ![PHP Version Requirement](https://img.shields.io/badge/PHP-%3E%3D%208.0-777BB4?logo=php&logoColor=white)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Composer](https://img.shields.io/badge/Composer-Ready-blue?logo=composer&logoColor=white)
 
-Ett lättviktigt, blixtsnabbt och helt "headless" inloggningsplugin, skräddarsytt för egenbyggda PHP MVC-ramverk. 
+A lightweight, lightning-fast, and fully "headless" authentication plugin tailored for custom-built PHP MVC frameworks. 
 
-Paketet hanterar all bakomliggande logik för säker inloggning, databasvalidering och sessioner, men lämnar all design, HTML och CSS (UI) helt upp till dig och din applikation. Det perfekta drop-in-paketet när du vill ha stensäker inloggning utan att tvingas in i ett specifikt frontend-bibliotek.
+The package handles all underlying logic for secure login, database validation, and sessions, but leaves all design, HTML, and CSS (UI) entirely up to you and your application. The perfect drop-in package when you want rock-solid authentication without being forced into a specific frontend library.
 
-## ✨ Funktioner
-* **100 % Headless:** Ingen inbakad HTML. Fungerar sömlöst med Bootstrap, Tailwind, Vue, React eller ren HTML.
-* **Säker "Kom ihåg mig":** Inbyggt stöd för auto-inloggning via säkra, token-baserade HttpOnly-cookies (skyddar mot XSS och Cookie Forgery).
-* **Dependency Injection:** Helt oberoende av ditt ramverks underliggande struktur. Du skickar in din egen databasanslutning.
-* **Intended URL ("Smarta Redirects"):** Sparar automatiskt den URL användaren försökte nå innan de skickades till inloggningen, och slussar dem rätt när inloggningen lyckas.
-* **Stensäker Kryptering:** Bygger på PHP:s inbyggda och branschstandardiserade `password_hash()` och `password_verify()`.
+## ✨ Features
+* **100% Headless:** No baked-in HTML. Works seamlessly with Bootstrap, Tailwind, Vue, React, or plain HTML.
+* **Secure "Remember Me":** Built-in support for auto-login via secure, token-based HttpOnly cookies (protects against XSS and Cookie Forgery).
+* **Dependency Injection:** Completely independent of your framework's underlying structure. You inject your own database connection.
+* **Intended URL ("Smart Redirects"):** Automatically saves the URL the user attempted to access before being redirected to the login, and routes them to the correct destination upon successful login.
+* **Rock-Solid Encryption:** Built on PHP's native and industry-standard `password_hash()` and `password_verify()`.
 
 ---
 
 ## 📦 Installation
 
-Installera paketet via Composer i ditt projekt:
+Install the package via Composer in your project:
 
 ```bash
 composer require raktfranhjartat/small-mvc-auth
+
 ```
-
----
-
-## 🚀 Kom igång
-
-### 1. Förbered Databasen
-Paketet förväntar sig att du har en tabell (exempelvis `users`) med åtminstone dessa tre kolumner:
-* `email` (VARCHAR, UNIQUE)
-* `password_hash` (VARCHAR)
-* `remember_token` (VARCHAR, NULL) - *Används för den säkra cookien.*
-
-> **Tips:** För att skapa ditt första test-lösenord kan du köra `echo password_hash('ditt_lösenord', PASSWORD_DEFAULT);` i en tillfällig PHP-fil och lägga in resultatet direkt i databasen.
-
-### 2. Initiera Paketet
-Importera `AuthManager` i din applikation och skicka med din befintliga databasanslutning (PDO eller din egen databas-wrapper).
-
+## 🚀 Getting Started
+### 1. Prepare the Database
+The package expects you to have a table (e.g., users) with at least these three columns:
+ * email (VARCHAR, UNIQUE)
+ * password_hash (VARCHAR)
+ * remember_token (VARCHAR, NULL) - *Used for the secure cookie.*
+> **Tip:** To create your first test password, you can run echo password_hash('your_password', PASSWORD_DEFAULT); in a temporary PHP file and insert the result directly into the database.
+> 
+### 2. Initialize the Package
+Import AuthManager into your application and pass your existing database connection (PDO or your custom database wrapper).
 ```php
 use Raktfranhjartat\SmallMvcAuth\AuthManager;
-use App\Core\Database; // Byt ut mot ditt ramverks databasklass
+use App\Core\Database; // Replace with your framework's database class
 
-// Starta din databas (hämtar config för 'app')
+// Start your database (fetches config for 'app')
 $db = new Database('app');
 
-// Koppla in inloggningspaketet
+// Initialize the authentication package
 $auth = new AuthManager($db);
+
 ```
-
-### 3. Skydda en Route (Middleware)
-För att låsa en controller eller metod så att endast inloggade användare har åtkomst, anropar du `requireLogin()`. 
-
-Om användaren inte är inloggad sparas deras sökta URL i sessionen, och de omdirigeras direkt till `/login`.
-
+### 3. Protect a Route (Middleware)
+To lock a controller or method so that only logged-in users have access, call requireLogin().
+If the user is not logged in, their requested URL is saved in the session, and they are redirected directly to /login.
 ```php
-// Inuti din Controller, innan du laddar vyn
+// Inside your Controller, before loading the view
 $auth->requireLogin('/login');
 
-// Koden här under körs bara om användaren är bekräftat inloggad
+// The code below only runs if the user is confirmed as logged in
+
 ```
-
-### 4. Hantera Inloggningen
-När din applikation tar emot ett inloggningsformulär via POST använder du `attempt()` för att verifiera uppgifterna mot databasen. 
-
-Om inloggningen lyckas kan du använda den smarta funktionen `intendedUrl()` för att skicka tillbaka användaren exakt dit de var på väg.
-
+### 4. Handle the Login
+When your application receives a login form via POST, use attempt() to verify the credentials against the database.
+If the login is successful, you can use the smart intendedUrl() function to send the user back exactly where they were headed.
 ```php
 $email = $_POST['email'] ?? '';
 $password = $_POST['password'] ?? '';
-$remember = isset($_POST['remember']); // true om checkboxen är ikryssad
+$remember = isset($_POST['remember']); // true if the checkbox is checked
 
 if ($auth->attempt($email, $password, $remember)) {
-    // Hämtar URL:en de försökte nå, annars skickas de till /admin
+    // Retrieves the URL they tried to reach, otherwise redirects to /admin
     $redirectUrl = $auth->intendedUrl('/admin'); 
-    
-    // Använd ramverkets inbyggda redirect-metod
-    $this->redirect($redirectUrl, ['success' => 'Du är inloggad!']);
+
+    // Use the framework's built-in redirect method
+    $this->redirect($redirectUrl, ['success' => 'You are logged in!']);
     return;
 } else {
-    // Fel e-post eller lösenord, skicka tillbaka till formuläret
-    $this->redirect('/login', ['error' => 'Fel e-postadress eller lösenord.']);
+    // Incorrect email or password, redirect back to the form
+    $this->redirect('/login', ['error' => 'Incorrect email or password.']);
     return;
 }
+
 ```
-
----
-
-## 🤝 Bidra (Contributing)
-Pull requests är mycket välkomna! Om du hittar en bugg eller har förslag på nya funktioner, öppna gärna ett "Issue" först så diskuterar vi det. Se till att följa kodstandarden innan du pushar din PR.
-
-## 📄 Licens
-Detta projekt är öppen källkod och släpps under [MIT-licensen](https://opensource.org/licenses/MIT). Du får använda, modifiera och distribuera koden fritt, även i kommersiella projekt.
+## 🤝 Contributing
+Pull requests are very welcome! If you find a bug or have suggestions for new features, please open an "Issue" first so we can discuss it. Make sure to follow the code standards before pushing your PR.
+## 📄 License
+This project is open-source and released under the MIT License. You are free to use, modify, and distribute the code, even in commercial projects.
+```
